@@ -13,7 +13,7 @@ python3 scripts/fetch-packages.py .build/packages
 python3 scripts/build-image.py .build/packages ../linux/assets/terminal/v2/*.cpio.gz ../linux/runtime/vmlinuz .build/graphics.cpio.gz
 ```
 
-The build checks every input hash and compares the module package's embedded kernel with the emulator's kernel. It assembles the filesystem as an ordinary user. It never executes Debian maintainer scripts. Package copyright notices are retained in the guest.
+The build checks every input hash and compares the module package's embedded kernel with the emulator's kernel. It assembles the filesystem as an ordinary user. It never executes Debian maintainer scripts. Package copyright notices are retained in the guest. The [Debian source inventory](docs/debian-sources.json) lists the matching source versions, download URLs and SHA-256 hashes for the locked Debian packages.
 
 ## WebOS entry
 
