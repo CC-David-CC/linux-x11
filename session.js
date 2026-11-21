@@ -1,14 +1,27 @@
 'use strict';
+const x11BootMessages = new Map([
+    ['X11 guest init', ['Starting Linux guest services…', 'init']],
+    ['X11 mounting home', ['Mounting the guest home…', 'home']],
+    ['X11 home mount failed', ['Linux could not mount its home. Reopen the X11 window to retry.', 'error']],
+    ['X11 starting Xorg', ['Starting the graphical desktop…', 'xorg']],
+    ['X11 starting clients', ['Opening xterm and xclock…', 'clients']],
+    ['X11 session ready', ['', 'ready']],
+    ['X11 clients did not become ready', ['The graphical desktop could not start its applications.', 'error']],
+    ['X11 display did not become ready', ['Linux could not start the graphical display.', 'error']],
+]);
+
 window.bootX11 = function bootX11(handle, report) {
     const screen = document.getElementById('screen');
     let disposed = false;
     let pendingSerial = '';
+    const initrd = new URL('./graphics.cpio.gz', document.baseURI).href;
+    report('Loading the Linux guest image…', 'download');
     const vm = new V86({
         wasm_path: '/assets/terminal/v86/v86.wasm',
         bios: {url: '/assets/terminal/v86/seabios.bin'},
         vga_bios: {url: '/assets/terminal/v86/vgabios.bin'},
         bzimage: {url: '/assets/terminal/v86/vmlinuz'},
-        initrd: {url: new URL('./graphics.cpio.gz', document.baseURI).href},
+        initrd: {url: initrd},
         cmdline: 'console=ttyS0,115200n8 rdinit=/x11/init panic=-1 loglevel=4',
         memory_size: 512 * 1024 * 1024,
         vga_memory_size: 8 * 1024 * 1024,
@@ -21,7 +34,14 @@ window.bootX11 = function bootX11(handle, report) {
         autostart: true,
         disable_speaker: true,
     });
+    vm.add_listener('download-progress', ({file_name, loaded, total, lengthComputable}) => {
+        if (file_name === initrd && lengthComputable && total > 0) {
+            const percent = Math.min(100, Math.floor(loaded * 100 / total));
+            report(`Downloading the Linux guest image · ${percent}%`, 'download');
+        }
+    });
     vm.add_listener('emulator-ready', () => {
+        report('Booting the Linux kernel…', 'kernel');
         if (handle || disposed) return;
         const root = vm.fs9p.GetInode(0);
         root.uid = root.gid = 1000;
@@ -31,10 +51,9 @@ window.bootX11 = function bootX11(handle, report) {
     vm.add_listener('serial0-output-byte', byte => {
         if (byte === 10) {
             const line = pendingSerial.trim();
-            if (line.startsWith('X.Org X Server ')) report('Starting xterm and xclock…');
-            if (line === 'X11 session ready') report('');
-            if (line === 'X11 clients did not become ready') report('The graphical desktop could not start its applications.');
-            if (/Kernel panic|Fatal server error/.test(pendingSerial)) report('Linux could not start the graphical session.');
+            const status = x11BootMessages.get(line);
+            if (status) report(...status);
+            if (/Kernel panic|Fatal server error/.test(line)) report('Linux could not start the graphical session.');
             pendingSerial = '';
         } else if (pendingSerial.length < 1024) pendingSerial += String.fromCharCode(byte);
     });

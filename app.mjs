@@ -9,7 +9,8 @@ export function mount(host) {
     Object.assign(frame.style, {border: '0', flex: '1', minHeight: '0', width: '100%'});
     const status = document.createElement('div');
     status.setAttribute('role', 'status');
-    status.textContent = 'Starting Linux X11…';
+    status.dataset.stage = 'runtime';
+    status.textContent = 'Loading the Linux emulator…';
     element.append(status, frame);
 
     let closed = false;
@@ -22,9 +23,10 @@ export function mount(host) {
         guest?.dispose();
         frame.remove();
     };
-    function report(message) {
+    function report(message, stage = 'error') {
         if (closed) return;
-        status.textContent = message;
+        status.dataset.stage = stage;
+        if (status.textContent !== message) status.textContent = message;
         status.hidden = !message;
     }
     async function start() {
@@ -33,6 +35,7 @@ export function mount(host) {
             if (typeof view.bootX11 !== 'function') throw Error('Could not load the X11 runtime.');
             let handle = null;
             if (host.storage?.signedInSubject()) {
+                report('Connecting to My files…', 'account');
                 const [ctx, storage, linux] = await Promise.all([
                     host.storage.accountFileContext(),
                     import('/storage/browser/account-home.mjs'),
