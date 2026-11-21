@@ -21,6 +21,6 @@ Serve `app.mjs`, `session.html`, `session.js`, `screen.css` and the generated `g
 
 ## Browser verification
 
-In a local WebOS desktop backed by its real accounts server, a disposable user launched Linux X11 from Programming, clicked the xterm, typed shell commands, and saved a file in their home directory. A fresh login read the same bytes after the window closed. The shell reported UID 1000. Localhost responded and the guest routing table contained no default route.
+On [ksu.codes](https://ksu.codes), open **Programming → Linux X11**. In Chromium, a disposable account launched the guest, clicked xterm, and saved a file as UID 1000. A fresh browser login read the exact bytes after the window closed. A separate anonymous session wrote to its temporary home. Both guests had loopback connectivity only. The screenshot below is from the signed-in production run.
 
 ![xterm showing its account home and saved file alongside a running xclock](docs/x11-account-home.png)
