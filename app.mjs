@@ -17,9 +17,11 @@ export function mount(host) {
     let home;
     let guest;
     let unregisterWriter;
+    const lifetime = new AbortController();
     const dispose = () => {
         if (closed) return;
         closed = true;
+        lifetime.abort();
         unregisterWriter?.();
         home?.close();
         guest?.dispose();
@@ -73,7 +75,8 @@ export function mount(host) {
                 unregisterWriter = ctx.registerFileWriter?.(pauseFileWriter);
                 handle = packet => home.request(new Uint8Array(packet));
             }
-            if (!closed) guest = view.bootX11(handle, report);
+            const attachNetwork = await host.prepareGuestNetwork?.(lifetime.signal);
+            if (!closed) guest = view.bootX11(handle, report, attachNetwork);
         } catch (error) {
             report('Linux X11 could not start. ' + error.message);
         }

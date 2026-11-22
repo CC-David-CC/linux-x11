@@ -11,7 +11,7 @@ const x11BootMessages = new Map([
     ['X11 display did not become ready', ['Linux could not start the graphical display.', 'error']],
 ]);
 
-window.bootX11 = function bootX11(handle, report) {
+window.bootX11 = function bootX11(handle, report, attachNetwork) {
     const screen = document.getElementById('screen');
     let disposed = false;
     let pendingSerial = '';
@@ -27,7 +27,8 @@ window.bootX11 = function bootX11(handle, report) {
         vga_bios: {url: '/assets/terminal/v86/vgabios.bin'},
         bzimage: {url: '/assets/terminal/v86/vmlinuz'},
         initrd: {url: initrd},
-        cmdline: 'console=ttyS0,115200n8 rdinit=/x11/init panic=-1 loglevel=4' + (chromium ? ' webos_chromium=1' : ''),
+        cmdline: 'console=ttyS0,115200n8 rdinit=/x11/init panic=-1 loglevel=4' + (chromium ? ' webos_chromium=1' : '') + (attachNetwork ? ' guest_net=1' : ''),
+        ...(attachNetwork && {net_device: {type: 'virtio'}}),
         memory_size: (chromium ? 1024 : 512) * 1024 * 1024,
         ...(chromium && {hda: {url: asset('./browser.sqfs'), size: diskBytes, async: true, fixed_chunk_size: 256 * 1024}}),
         vga_memory_size: 8 * 1024 * 1024,
@@ -40,6 +41,8 @@ window.bootX11 = function bootX11(handle, report) {
         autostart: true,
         disable_speaker: true,
     });
+    try { attachNetwork?.(vm); }
+    catch (error) { void vm.destroy(); throw error; }
     vm.add_listener('download-progress', ({file_name, loaded, total, lengthComputable}) => {
         if (file_name === initrd && lengthComputable && total > 0) {
             const percent = Math.min(100, Math.floor(loaded * 100 / total));

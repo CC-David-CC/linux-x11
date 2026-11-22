@@ -13,13 +13,22 @@ printf "127.0.0.1 localhost\n" > /etc/hosts
 for list in /modules/load-order /x11/modules/load-order; do
     while read -r module; do insmod "${list%/*}/$module"; done < "$list"
 done
+case " $(cat /proc/cmdline) " in
+    *' guest_net=1 '*)
+        if ifconfig eth0 10.86.0.2 netmask 255.255.255.0 up && route add default gw 10.86.0.1; then
+            printf 'nameserver 10.86.0.3\n' > /etc/resolv.conf
+        else
+            echo 'Guest network interface failed to configure.'
+        fi
+        ;;
+esac
 echo 'X11 mounting home'
 if ! mount -t 9p -o trans=virtio,version=9p2000.L,cache=none host9p /home/guest; then
     echo 'X11 home mount failed'
     exit 1
 fi
 chown 1000:1000 /home/guest
-if grep -q ' webos_chromium=1$' /proc/cmdline; then
+if grep -Eq '(^| )webos_chromium=1( |$)' /proc/cmdline; then
     echo 'X11 mounting Chromium disk'
     mkdir -p /opt/browser /usr/lib/chromium /dev/shm
     for attempt in $(seq 1 20); do
