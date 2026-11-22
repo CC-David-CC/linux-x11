@@ -22,7 +22,10 @@ def archive(path):
     with subprocess.Popen(['dpkg-deb', '--fsys-tarfile', path], stdout=subprocess.PIPE) as process:
         with tarfile.open(fileobj=process.stdout, mode='r|') as tar:
             yield tar
-        if process.wait():
+        # tarfile stops at the end marker. Drain dpkg-deb's trailing padding
+        # before waiting, even on hosts with a small pipe buffer.
+        process.communicate()
+        if process.returncode:
             raise RuntimeError(f'Cannot read {path.name}')
 
 
