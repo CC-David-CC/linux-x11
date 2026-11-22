@@ -3,4 +3,12 @@
 <title>Linux X11</title><link rel="stylesheet" href="screen.css">
 <script defer src="/assets/terminal/v86/libv86.js"></script>
 <script defer src="session.js"></script></head>
-<body><div id="screen"><div class="text-mode"></div><canvas></canvas></div></body></html>
+<body>
+<nav id="display-controls" aria-label="Guest display controls">
+  <label>Zoom <select id="zoom"><option value="fit">Fit</option><option value="1">100%</option><option value="1.5">150%</option><option value="2">200%</option></select></label>
+  <button type="button" id="pan" aria-pressed="false" hidden>Pan</button>
+  <button type="button" id="keyboard">Keyboard</button>
+  <textarea id="guest-keys" class="phone_keyboard" aria-label="Type into the guest" tabindex="-1" rows="1" inputmode="text" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea>
+</nav>
+<div id="viewport"><div id="screen"><div class="text-mode"></div><canvas></canvas></div></div>
+</body></html>

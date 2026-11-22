@@ -38,6 +38,10 @@ node tests/devices/ps2_input_order.js
 
 The JavaScript build uses the Makefile’s pinned Closure Compiler v20210601 and Java 17. Copy `build/libv86.js` into `.build/chromium-inputs/v86-chromium.js` and `build/v86.wasm` into `.build/chromium-inputs/v86-chromium.wasm` in the app. In the WebOS viewer build, select both `--linux-x11-packages` (the Xorg package directory) and `--linux-x11-chromium-inputs` (the Chromium output directory) with the account-home Terminal runtime. The builder verifies each artifact and the checked-out engine commit. [WebOS v86 source](https://github.com/CC-David-CC/engine-v86/tree/9019aa65bf60578fb342830b36315e466d39fb51)
 
+## Display and typing
+
+The guest opens fitted to its window. On screens at least 1600 × 900 CSS pixels, Xorg requests a 1280 × 800 desktop and can fall back to a supported smaller mode. Compact screens boot at 800 × 600. Use **Zoom** to read small text at 100%, 150% or 200%. When the desktop extends past the window, **Pan** lets you swipe to another part of it. Turn Pan off to interact with guest windows again. Tap a guest text field, then **Keyboard** to enter text with the phone keyboard. A physical keyboard still works directly in the guest.
+
 ## WebOS entry
 
 Serve `app.mjs`, `session.html`, `session.js`, `screen.css` and the generated `graphics.cpio.gz` together. Import `mount` from `app.mjs` and call it with the normal WebOS host. It returns `{ element, dispose, focus }` synchronously. The desktop supplies the Files workspace for the active session. Anon uses browser-only My files. Signed-in sessions use the account's My files. Both use the shared Storage and Linux 9P adapters. The guest receives file operations scoped to its home. The account credential stays outside the emulator.

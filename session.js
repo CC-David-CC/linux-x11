@@ -13,6 +13,13 @@ const x11BootMessages = new Map([
 
 window.bootX11 = function bootX11(handle, report, attachNetwork) {
     const screen = document.getElementById('screen');
+    const viewport = document.getElementById('viewport');
+    const controls = document.getElementById('display-controls');
+    const zoom = document.getElementById('zoom');
+    const pan = document.getElementById('pan');
+    const keyboard = document.getElementById('keyboard');
+    const keys = document.getElementById('guest-keys');
+    const largeScreen = window.screen.width >= 1600 && window.screen.height >= 900;
     let disposed = false;
     let pendingSerial = '';
     const diskBytes = Number(document.documentElement.dataset.chromiumDiskBytes || 0);
@@ -27,7 +34,7 @@ window.bootX11 = function bootX11(handle, report, attachNetwork) {
         vga_bios: {url: '/assets/terminal/v86/vgabios.bin'},
         bzimage: {url: '/assets/terminal/v86/vmlinuz'},
         initrd: {url: initrd},
-        cmdline: 'console=ttyS0,115200n8 rdinit=/x11/init panic=-1 loglevel=4' + (chromium ? ' webos_chromium=1' : '') + (attachNetwork ? ' guest_net=1' : ''),
+        cmdline: 'console=ttyS0,115200n8 rdinit=/x11/init panic=-1 loglevel=4' + (largeScreen ? ' webos_x11_large=1' : '') + (chromium ? ' webos_chromium=1' : '') + (attachNetwork ? ' guest_net=1' : ''),
         ...(attachNetwork && {net_device: {type: 'virtio'}}),
         memory_size: (chromium ? 1024 : 512) * 1024 * 1024,
         ...(chromium && {hda: {url: asset('./browser.sqfs'), size: diskBytes, async: true, fixed_chunk_size: 256 * 1024}}),
@@ -84,12 +91,68 @@ window.bootX11 = function bootX11(handle, report, attachNetwork) {
         canvas.focus({preventScroll: true});
     }
     canvas.addEventListener('pointerdown', focusCanvas);
-    function resize() {
-        if (!canvas.width || !canvas.height) return;
-        const scale = Math.min(innerWidth / canvas.width, innerHeight / canvas.height, 1);
-        if (scale > 0) vm.screen_set_scale(scale, scale);
+    const controlsLifetime = new AbortController();
+    const options = {signal: controlsLifetime.signal};
+    // Controls outside the guest have their own keyboard actions. The input
+    // adapter handles the textarea's standard mobile editing events.
+    for (const type of ['keydown', 'keyup']) {
+        controls.addEventListener(type, event => {
+            if (event.target !== keys) event.stopPropagation();
+        }, options);
     }
-    window.addEventListener('resize', resize);
+    keyboard.addEventListener('click', () => {
+        keys.value = ' ';
+        keys.focus({preventScroll: true});
+        keys.setSelectionRange(1, 1);
+    }, options);
+    // Mobile keyboards can commit a whole word in one event. Pace these
+    // PS/2 keys so a following Enter cannot overtake the committed text.
+    let keyboardGeneration = 0;
+    let pendingKeys = Promise.resolve();
+    function sendInput(text, keyCode) {
+        const generation = keyboardGeneration;
+        pendingKeys = pendingKeys.then(async () => {
+            if (keyCode && generation === keyboardGeneration) await vm.keyboard_send_keys([keyCode]);
+            for (const character of text) {
+                if (generation !== keyboardGeneration) break;
+                await vm.keyboard_send_text(character, 12);
+            }
+        });
+    }
+    keys.addEventListener('blur', () => { keyboardGeneration++; }, options);
+    keys.addEventListener('keydown', event => {
+        if (event.isComposing || event.keyCode === 229) return;
+        const code = {Enter: 13, Backspace: 8}[event.key];
+        if (!code) return;
+        event.preventDefault();
+        event.stopPropagation();
+        sendInput('', code);
+    }, options);
+    keys.addEventListener('input', event => {
+        event.stopPropagation();
+        if (event.isComposing) return;
+        if (event.inputType === 'deleteContentBackward') sendInput('', 8);
+        else if (event.inputType === 'insertLineBreak' || event.inputType === 'insertParagraph') sendInput('', 13);
+        else if (event.data) sendInput(event.data, 0);
+        keys.value = ' ';
+    }, options);
+    function setPan(enabled) {
+        pan.setAttribute('aria-pressed', String(enabled));
+        viewport.classList.toggle('panning', enabled);
+    }
+    pan.addEventListener('click', () => setPan(!viewport.classList.contains('panning')), options);
+    function resize() {
+        if (!canvas.width || !canvas.height || !viewport.clientWidth || !viewport.clientHeight) return;
+        const fit = Math.min(viewport.clientWidth / canvas.width, viewport.clientHeight / canvas.height);
+        const scale = zoom.value === 'fit' ? fit : Number(zoom.value);
+        vm.screen_set_scale(scale, scale);
+        const overflow = zoom.value !== 'fit' && (canvas.width * scale > viewport.clientWidth + 1 || canvas.height * scale > viewport.clientHeight + 1);
+        pan.hidden = !overflow;
+        if (!overflow) setPan(false);
+    }
+    zoom.addEventListener('change', resize, options);
+    const layout = new ResizeObserver(resize);
+    layout.observe(viewport);
     const observer = new MutationObserver(resize);
     observer.observe(canvas, {attributes: true, attributeFilter: ['width', 'height']});
     function dispose() {
@@ -97,7 +160,9 @@ window.bootX11 = function bootX11(handle, report, attachNetwork) {
         disposed = true;
         observer.disconnect();
         canvas.removeEventListener('pointerdown', focusCanvas);
-        window.removeEventListener('resize', resize);
+        keyboardGeneration++;
+        controlsLifetime.abort();
+        layout.disconnect();
         window.removeEventListener('pagehide', dispose);
         void vm.destroy();
     }

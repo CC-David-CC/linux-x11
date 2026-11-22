@@ -1,5 +1,14 @@
 html, body { height: 100%; margin: 0; overflow: hidden; background: #17191b; color: #eee; }
-body { display: grid; place-items: center; }
-#screen { width: max-content; height: max-content; }
+body { display: flex; flex-direction: column; font: 14px system-ui, sans-serif; }
+#display-controls { display: flex; align-items: center; gap: .4rem; padding: .2rem .5rem; background: #24282c; }
+#display-controls label { display: flex; align-items: center; gap: .3rem; }
+#display-controls :is(button, select) { min-height: 32px; padding: .15rem .55rem; font: inherit; color: inherit; background: #353b40; border: 1px solid #697279; border-radius: .25rem; }
+#display-controls button[aria-pressed="true"] { background: #226384; }
+#display-controls :focus-visible, #display-controls:has(#guest-keys:focus) #keyboard { outline: 2px solid #8fd5ff; outline-offset: 1px; }
+#guest-keys { position: absolute; inset-inline-start: .5rem; top: .3rem; opacity: 0; width: 1px; height: 1px; padding: 0; border: 0; pointer-events: none; font-size: 16px; }
+#viewport { flex: 1; min-height: 0; overflow: auto; display: flex; }
+#screen { flex: none; width: max-content; height: max-content; margin: auto; }
+#viewport.panning #screen { pointer-events: none; }
 .text-mode { white-space: pre; font: 14px/14px monospace; }
 canvas { display: none; }
+@media (pointer: coarse) { #display-controls :is(button, select) { min-height: 44px; } }
