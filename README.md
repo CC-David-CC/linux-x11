@@ -27,14 +27,16 @@ python3 scripts/build-chromium-disk.py .build/chromium-debs .build/chromium-inpu
 
 The script verifies and emits both the block-aligned `browser.sqfs` and `chromium-copyright.txt`. At runtime v86 fetches 256 KiB blocks from the same origin. The disk recipe extracts the 120 copyright files shipped directly by its 121 packages. Debian's libncursesw6 points to libtinfo6 for its notice. The release serves the matching ncurses 6.4-4 source package's verified debian/copyright at `/assets/legal/linux-x11/ncurses-copyright.txt`. It includes the referenced Debian license texts in `debian-common-licenses.txt`. The Debian source inventory is served at `/assets/legal/linux-x11/chromium-source-packages.json`. [Source packages and checksums](docs/chromium-source-packages.json)
 
-For `v86-chromium.wasm`, check out the `engineCommit` in `chromium-runtime.json` from the WebOS v86 engine. The reproducible build used Node 24.22.1, Clang 18 as `clang`, GNU Make and Rust nightly-2026-11-16 with the `wasm32-unknown-unknown` target. In that engine checkout, run
+For `v86-chromium.wasm` and the X11 input controller in `v86-chromium.js`, check out the `engineCommit` in `chromium-runtime.json` from the WebOS v86 engine. The reproducible build used Node 24.22.1, Clang 18 as `clang`, GNU Make and Rust nightly-2026-11-16 with the `wasm32-unknown-unknown` target. In that engine checkout, run
 
 ```sh
 mkdir -p build src/rust/gen
 RUSTUP_TOOLCHAIN=nightly-2026-11-16 make -j3 build/v86.wasm
+make build/libv86.js
+node tests/devices/ps2_input_order.js
 ```
 
-Copy `build/v86.wasm` into `.build/chromium-inputs/v86-chromium.wasm` in the app. In the WebOS viewer build, select both `--linux-x11-packages` (the Xorg package directory) and `--linux-x11-chromium-inputs` (the Chromium output directory) with the account-home Terminal runtime. The builder verifies each artifact and the checked-out engine commit. [WebOS v86 source](https://github.com/CC-David-CC/engine-v86/tree/b6ab25a8e0a3d4127ef3b588bf1c2eec5eed1a03)
+The JavaScript build uses the Makefile’s pinned Closure Compiler v20210601 and Java 17. Copy `build/libv86.js` into `.build/chromium-inputs/v86-chromium.js` and `build/v86.wasm` into `.build/chromium-inputs/v86-chromium.wasm` in the app. In the WebOS viewer build, select both `--linux-x11-packages` (the Xorg package directory) and `--linux-x11-chromium-inputs` (the Chromium output directory) with the account-home Terminal runtime. The builder verifies each artifact and the checked-out engine commit. [WebOS v86 source](https://github.com/CC-David-CC/engine-v86/tree/9019aa65bf60578fb342830b36315e466d39fb51)
 
 ## WebOS entry
 
