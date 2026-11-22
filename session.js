@@ -3,6 +3,7 @@ const x11BootMessages = new Map([
     ['X11 guest init', ['Starting Linux guest services…', 'init']],
     ['X11 mounting home', ['Mounting the guest home…', 'home']],
     ['X11 home mount failed', ['Linux could not mount its home. Reopen the X11 window to retry.', 'error']],
+    ['X11 mounting Chromium disk', ['Mounting the Chromium disk…', 'browser-disk']],
     ['X11 starting Xorg', ['Starting the graphical desktop…', 'xorg']],
     ['X11 starting clients', ['Opening xterm and xclock…', 'clients']],
     ['X11 session ready', ['', 'ready']],
@@ -14,22 +15,27 @@ window.bootX11 = function bootX11(handle, report) {
     const screen = document.getElementById('screen');
     let disposed = false;
     let pendingSerial = '';
-    const initrd = new URL('./graphics.cpio.gz', document.baseURI).href;
+    const diskBytes = Number(document.documentElement.dataset.chromiumDiskBytes || 0);
+    const chromium = diskBytes > 0;
+    const asset = name => new URL(name, document.baseURI).href;
+    const initrd = asset('./graphics.cpio.gz');
+    let browserDiskError = false;
     report('Loading the Linux guest image…', 'download');
     const vm = new V86({
-        wasm_path: '/assets/terminal/v86/v86.wasm',
+        wasm_path: chromium ? asset('./v86-chromium.wasm') : '/assets/terminal/v86/v86.wasm',
         bios: {url: '/assets/terminal/v86/seabios.bin'},
         vga_bios: {url: '/assets/terminal/v86/vgabios.bin'},
         bzimage: {url: '/assets/terminal/v86/vmlinuz'},
         initrd: {url: initrd},
-        cmdline: 'console=ttyS0,115200n8 rdinit=/x11/init panic=-1 loglevel=4',
-        memory_size: 512 * 1024 * 1024,
+        cmdline: 'console=ttyS0,115200n8 rdinit=/x11/init panic=-1 loglevel=4' + (chromium ? ' webos_chromium=1' : ''),
+        memory_size: (chromium ? 1024 : 512) * 1024 * 1024,
+        ...(chromium && {hda: {url: asset('./browser.sqfs'), size: diskBytes, async: true, fixed_chunk_size: 256 * 1024}}),
         vga_memory_size: 8 * 1024 * 1024,
         screen_container: screen,
         filesystem: handle ? {handle9p(packet, reply) {
             handle(packet).then(result => {
                 if (!disposed) reply(new Uint8Array(result));
-            }).catch(() => report('Account storage is unavailable. Reopen the X11 window.'));
+            }).catch(() => report('My files are unavailable. Reopen the X11 window.'));
         }} : {},
         autostart: true,
         disable_speaker: true,
@@ -52,7 +58,17 @@ window.bootX11 = function bootX11(handle, report) {
         if (byte === 10) {
             const line = pendingSerial.trim();
             const status = x11BootMessages.get(line);
-            if (status) report(...status);
+            if (line === 'Chromium disk could not mount') {
+                browserDiskError = true;
+                document.documentElement.dataset.chromiumDisk = 'error';
+            } else if (line === 'Chromium disk ready') {
+                document.documentElement.dataset.chromiumDisk = 'ready';
+            }
+            if (line === 'X11 session ready' && browserDiskError) {
+                report('Linux X11 is ready. The Chromium disk could not mount.', 'ready');
+            } else if (status) {
+                report(...status);
+            }
             if (/Kernel panic|Fatal server error/.test(line)) report('Linux could not start the graphical session.');
             pendingSerial = '';
         } else if (pendingSerial.length < 1024) pendingSerial += String.fromCharCode(byte);
@@ -83,5 +99,5 @@ window.bootX11 = function bootX11(handle, report) {
         void vm.destroy();
     }
     window.addEventListener('pagehide', dispose, {once: true});
-    return {dispose};
+    return {dispose, running: () => vm.is_running(), pause: () => vm.stop(), resume: () => vm.run()};
 };

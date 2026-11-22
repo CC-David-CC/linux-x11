@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+if [ ! -x /usr/lib/chromium/chromium ]; then
+    printf '%s\n' 'Chromium is unavailable in this X11 session.' >&2
+    exit 1
+fi
+
+export XDG_RUNTIME_DIR=/tmp/chromium-runtime
+export XDG_CONFIG_HOME=/tmp/chromium-config
+export XDG_CACHE_HOME=/tmp/chromium-cache
+umask 077
+mkdir -p "$XDG_RUNTIME_DIR" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME"
+export LD_LIBRARY_PATH="/opt/browser/lib/i386-linux-gnu/pulseaudio:/opt/browser/lib/i386-linux-gnu:/opt/browser/usr/lib/i386-linux-gnu:${LD_LIBRARY_PATH:-}"
+
+exec /usr/lib/chromium/chromium \
+    --user-data-dir="$XDG_CONFIG_HOME/profile" \
+    --disable-dev-shm-usage --disable-gpu --disable-background-networking --disable-component-update \
+    --no-first-run --no-default-browser-check --ipc-connection-timeout=90 "$@"

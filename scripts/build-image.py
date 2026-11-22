@@ -31,7 +31,7 @@ def digest(path):
         return hashlib.file_digest(data, 'sha256').hexdigest()
 
 
-def kernel_overlay(tar, output, expected_kernel):
+def kernel_overlay(tar, output, expected_kernel, chromium=False):
     modules = {}
     matched = False
     with tempfile.TemporaryDirectory() as tmp:
@@ -55,7 +55,10 @@ def kernel_overlay(tar, output, expected_kernel):
                 include(dep.replace('-', '_'))
             output['x11/modules/' + path.name] = (0o100644, path.read_bytes())
             order.append(name)
-        for name in ('bochs', 'evdev', 'psmouse'):
+        drivers = ('bochs', 'evdev', 'psmouse')
+        if chromium:
+            drivers += ('ata_piix', 'sd_mod', 'squashfs')
+        for name in drivers:
             include(name)
         output['x11/modules/load-order'] = (0o100644, ''.join(modules[n].name+'\n' for n in order).encode())
 
@@ -83,6 +86,7 @@ def main():
     parser.add_argument('base_initrd', type=Path)
     parser.add_argument('kernel', type=Path)
     parser.add_argument('output', type=Path)
+    parser.add_argument('--chromium', action='store_true')
     args = parser.parse_args()
     base_hash, kernel_hash = (ROOT/'base.sha256').read_text().split()
     if digest(args.base_initrd) != base_hash or digest(args.kernel) != kernel_hash:
@@ -95,7 +99,7 @@ def main():
             raise ValueError(f'Package hash mismatch for {filename}')
         with archive(path) as tar:
             if filename.startswith('linux-image-'):
-                kernel_overlay(tar, output, kernel_hash)
+                kernel_overlay(tar, output, kernel_hash, args.chromium)
                 continue
             for item in tar:
                 name = item.name.removeprefix('./')
@@ -108,6 +112,8 @@ def main():
     for name in ('init', 'session.sh', 'drop-privileges.py', 'xorg.conf', 'twmrc'):
         path = ROOT / 'guest' / name
         output['x11/'+name] = (0o100755 if name == 'init' else 0o100644, path.read_bytes())
+    if args.chromium:
+        output['usr/bin/chromium'] = (0o100755, (ROOT/'guest/chromium').read_bytes())
     # Debian installs these aliases into the generated X font directory.
     output['usr/share/fonts/X11/misc/fonts.alias'] = output['etc/X11/fonts/misc/xfonts-base.alias']
     for name in list(output):

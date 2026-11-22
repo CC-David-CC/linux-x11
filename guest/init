@@ -19,6 +19,21 @@ if ! mount -t 9p -o trans=virtio,version=9p2000.L,cache=none host9p /home/guest;
     exit 1
 fi
 chown 1000:1000 /home/guest
+if grep -q ' webos_chromium=1$' /proc/cmdline; then
+    echo 'X11 mounting Chromium disk'
+    mkdir -p /opt/browser /usr/lib/chromium /dev/shm
+    for attempt in $(seq 1 20); do
+        [ -b /dev/sda ] && break
+        sleep 0.5
+    done
+    if mount -t squashfs -o ro /dev/sda /opt/browser &&
+       mount --bind /opt/browser/usr/lib/chromium /usr/lib/chromium &&
+       mount -t tmpfs -o mode=1777,size=96m tmpfs /dev/shm; then
+        echo 'Chromium disk ready'
+    else
+        echo 'Chromium disk could not mount'
+    fi
+fi
 cp /x11/xorg.conf /tmp/xorg.conf
 for input in /sys/class/input/event*; do
     case "$(cat "$input/device/name")" in

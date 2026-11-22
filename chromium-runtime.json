@@ -1,0 +1,19 @@
+{
+  "schema": "webos-x11-chromium-runtime/1",
+  "engineCommit": "b6ab25a8e0a3d4127ef3b588bf1c2eec5eed1a03",
+  "packageLockSHA256": "1fffa2b8f7be39a0882bbbc9ef5e326d73bfb1bdfe63054895336f6b978447b3",
+  "files": {
+    "browser.sqfs": {
+      "bytes": 184287232,
+      "sha256": "5e89c4d964b0bf559aa2306f73e9e7e07a56b363fc72620d154594e3a489d5a1"
+    },
+    "v86-chromium.wasm": {
+      "bytes": 1983827,
+      "sha256": "7600eef5583b081f4a909b078a2129a2608863abbcd3bcfffcf26e42c7a6b585"
+    },
+    "chromium-copyright.txt": {
+      "bytes": 2802695,
+      "sha256": "d63fe8a2beb0dac88f53b3e9cf5a2c439baf0fedf3c1bb228b650e13e00a6714"
+    }
+  }
+}
