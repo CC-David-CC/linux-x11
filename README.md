@@ -48,6 +48,9 @@ Serve `app.mjs`, `session.html`, `session.js`, `screen.css` and the generated `g
 
 ## Browser verification
 
+The [WebOS device checks](docs/webos-qa/PHONE.md) show xterm and xclock on the
+Galaxy S10+, with Fit, touch panning, keyboard input and My files reopen.
+
 On [ksu.codes](https://ksu.codes), open **Programming → Linux X11**. In Chromium, a disposable account launched the guest, clicked xterm, and saved a file as UID 1000. A fresh browser login read the exact bytes after the window closed. A separate anonymous session wrote to its temporary home. Both guests had loopback connectivity only. The screenshot below is from the signed-in production run.
 
 ![xterm showing its account home and saved file alongside a running xclock](docs/x11-account-home.png)
