@@ -146,7 +146,13 @@ window.bootX11 = function bootX11(handle, report, attachNetwork) {
         const fit = Math.min(viewport.clientWidth / canvas.width, viewport.clientHeight / canvas.height);
         const scale = zoom.value === 'fit' ? fit : Number(zoom.value);
         vm.screen_set_scale(scale, scale);
-        const overflow = zoom.value !== 'fit' && (canvas.width * scale > viewport.clientWidth + 1 || canvas.height * scale > viewport.clientHeight + 1);
+        // v86 adjusts its canvas for fractional device pixel ratios. The X11
+        // Zoom menu expresses the requested size in CSS pixels.
+        const width = canvas.width * scale;
+        const height = canvas.height * scale;
+        canvas.style.width = width + 'px';
+        canvas.style.height = height + 'px';
+        const overflow = zoom.value !== 'fit' && (width > viewport.clientWidth + 1 || height > viewport.clientHeight + 1);
         pan.hidden = !overflow;
         if (!overflow) setPan(false);
     }
